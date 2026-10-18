@@ -135,6 +135,23 @@ select { appearance: none; padding-right: 40px; background-image: url("data:imag
 .upload-name { margin-top: 10px; font-family: var(--mono); font-size: 13px; color: var(--ink-2); overflow-wrap: anywhere; }
 .upload-name[hidden] { display: none; }
 .upload-name.err { color: var(--bad); }
+/* Document tray (query reply) */
+.tray { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.slot { position: relative; }
+.slot input[type="file"] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.slot-drop { display: grid; gap: 3px; padding: 13px 46px 13px 16px; border-radius: 16px; background: var(--bone); box-shadow: inset 0 0 0 2px var(--line); cursor: pointer; transition: box-shadow 0.2s var(--ease), background 0.2s var(--ease); }
+.slot-drop:hover, .slot-drop:focus-within { box-shadow: inset 0 0 0 2px var(--clay); }
+.slot.over .slot-drop { background: var(--sand); box-shadow: inset 0 0 0 3px var(--clay); }
+.slot-title { font-family: var(--mono); font-size: 11px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+.slot-state { font-size: 14px; color: var(--ink-2); overflow-wrap: anywhere; }
+.slot.ready .slot-state { color: var(--copper-deep); }
+.slot.bad .slot-state { color: var(--bad); }
+.slot-clear { position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; display: grid; place-items: center; border: 0; border-radius: 9px; background: var(--bone-2); color: var(--muted); cursor: pointer; box-shadow: inset 0 0 0 2px var(--line); }
+.slot-clear[hidden] { display: none; }
+.slot-clear:hover { color: var(--bad); box-shadow: inset 0 0 0 2px var(--bad); }
+.slot-clear .icon { font-size: 16px; }
+.doc-summary { margin-top: 12px; font-family: var(--mono); font-size: 13px; color: var(--muted); }
+select:disabled { opacity: 0.55; cursor: not-allowed; }
 .row { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
 .status { min-height: 26px; margin-top: 14px; font-family: var(--mono); font-size: 14px; color: var(--ink-2); }
 .status.err { color: var(--bad); }
@@ -203,6 +220,7 @@ td { padding: 12px 14px; border-top: 2px solid var(--line); vertical-align: top;
   .sol-panel .photo { max-width: 340px; }
   .cta-slab .photo { justify-self: start; }
   .grid { grid-template-columns: 1fr; }
+  .tray { grid-template-columns: 1fr; }
   .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 560px) {
@@ -540,8 +558,8 @@ td { padding: 12px 14px; border-top: 2px solid var(--line); vertical-align: top;
   <div class="wrap">
     <div class="sec-head reveal">
       <p class="label">Tools</p>
-      <h2 id="tools-title">Run both tools on the sample data.</h2>
-      <p>These tools call the live API. The shipments, questions and invoices are synthetic.</p>
+      <h2 id="tools-title">Run both tools on your own documents.</h2>
+      <p>Both tools call the live API. Bring your own invoice or shipment documents, or use the bundled samples.</p>
     </div>
 
     <div class="tool-shell reveal d1">
@@ -553,12 +571,51 @@ td { padding: 12px 14px; border-top: 2px solid var(--line); vertical-align: top;
       <section class="panel" id="panel-query" role="tabpanel" aria-labelledby="tab-query">
         <div class="panel-intro">
           <h3>Draft a reply to an officer's question.</h3>
-          <p>Choose a shipment and a question. Every sentence in the result cites the document line it relies on. The draft is not sent anywhere.</p>
+          <p>Upload the shipment's documents and ask the question. Every sentence in the result cites the document line it relies on. The draft is not sent anywhere.</p>
+        </div>
+
+        <div class="field">
+          <span class="lab">Shipment documents</span>
+          <div class="tray" id="doc-tray">
+            <div class="slot" id="doc-invoice">
+              <input type="file" id="doc-invoice-file" accept=".txt,.csv,.md,.log,text/plain,.pdf,application/pdf" aria-label="Upload the commercial invoice">
+              <label class="slot-drop" for="doc-invoice-file" id="doc-invoice-drop">
+                <span class="slot-title">Commercial Invoice</span>
+                <span class="slot-state" id="doc-invoice-state">Drop a file or choose one</span>
+              </label>
+              <button class="slot-clear" type="button" id="doc-invoice-clear" hidden aria-label="Remove the commercial invoice"><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-cancel"/></svg></button>
+            </div>
+            <div class="slot" id="doc-bill_of_lading">
+              <input type="file" id="doc-bill_of_lading-file" accept=".txt,.csv,.md,.log,text/plain,.pdf,application/pdf" aria-label="Upload the bill of lading">
+              <label class="slot-drop" for="doc-bill_of_lading-file" id="doc-bill_of_lading-drop">
+                <span class="slot-title">Bill of Lading</span>
+                <span class="slot-state" id="doc-bill_of_lading-state">Drop a file or choose one</span>
+              </label>
+              <button class="slot-clear" type="button" id="doc-bill_of_lading-clear" hidden aria-label="Remove the bill of lading"><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-cancel"/></svg></button>
+            </div>
+            <div class="slot" id="doc-packing_list">
+              <input type="file" id="doc-packing_list-file" accept=".txt,.csv,.md,.log,text/plain,.pdf,application/pdf" aria-label="Upload the packing list">
+              <label class="slot-drop" for="doc-packing_list-file" id="doc-packing_list-drop">
+                <span class="slot-title">Packing List</span>
+                <span class="slot-state" id="doc-packing_list-state">Drop a file or choose one</span>
+              </label>
+              <button class="slot-clear" type="button" id="doc-packing_list-clear" hidden aria-label="Remove the packing list"><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-cancel"/></svg></button>
+            </div>
+            <div class="slot" id="doc-certificate_of_origin">
+              <input type="file" id="doc-certificate_of_origin-file" accept=".txt,.csv,.md,.log,text/plain,.pdf,application/pdf" aria-label="Upload the certificate of origin">
+              <label class="slot-drop" for="doc-certificate_of_origin-file" id="doc-certificate_of_origin-drop">
+                <span class="slot-title">Certificate of Origin</span>
+                <span class="slot-state" id="doc-certificate_of_origin-state">Drop a file or choose one</span>
+              </label>
+              <button class="slot-clear" type="button" id="doc-certificate_of_origin-clear" hidden aria-label="Remove the certificate of origin"><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-cancel"/></svg></button>
+            </div>
+          </div>
+          <p class="doc-summary" id="doc-summary">No documents loaded. Drafts use the sample shipment below.</p>
         </div>
 
         <div class="grid">
           <div class="field">
-            <label for="shipment">Shipment</label>
+            <label for="shipment">Sample shipment</label>
             <select id="shipment"></select>
           </div>
           <div class="field">
@@ -695,12 +752,12 @@ td { padding: 12px 14px; border-top: 2px solid var(--line); vertical-align: top;
         <p>Drafts and checks are for a licensed professional to review. Nothing reaches an agency or a terminal from this page.</p>
       </details>
       <details>
-        <summary><span class="tile ochre sm"><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-invoice"/></svg></span><span>It reads the sample layout only.</span><span class="mark" aria-hidden="true"></span></summary>
-        <p>The invoice reader handles the layout in the sample data. Real invoices in other layouts are refused with a message, not guessed.</p>
+        <summary><span class="tile ochre sm"><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-invoice"/></svg></span><span>It reads text, not scans.</span><span class="mark" aria-hidden="true"></span></summary>
+        <p>An upload is read as text: a .txt or .csv file, a pasted block, or a PDF that carries a text layer. A scanned page has no text to read, so its text has to be pasted. The charge reader still expects the sample invoice layout and refuses another one with a message, rather than guessing at it.</p>
       </details>
       <details>
-        <summary><span class="tile ochre sm"><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-info"/></svg></span><span>The data is synthetic.</span><span class="mark" aria-hidden="true"></span></summary>
-        <p>Shipments, questions, tariff cards and invoices are made up for demonstration. Do not enter real customer or shipment data unless the terms say it is allowed. The <a href="/terms.html">terms</a> and <a href="/privacy.html">privacy notice</a> set out the rest.</p>
+        <summary><span class="tile ochre sm"><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-info"/></svg></span><span>The samples are synthetic; your uploads are not stored.</span><span class="mark" aria-hidden="true"></span></summary>
+        <p>The bundled shipments, questions, tariff card and invoices are made up for demonstration. Anything you upload is used for that one request: the application keeps no database, writes nothing to disk and holds no session. The <a href="/terms.html">terms</a> and <a href="/privacy.html">privacy notice</a> set out the rest.</p>
       </details>
     </div>
   </div>
@@ -711,8 +768,8 @@ td { padding: 12px 14px; border-top: 2px solid var(--line); vertical-align: top;
     <div class="cta-slab reveal">
       <span class="door l" aria-hidden="true"><i></i></span><span class="door r" aria-hidden="true"><i></i></span>
       <div>
-        <h2 id="cta-title">See a sourced reply on the sample data.</h2>
-        <p>Pick a sample shipment, ask the officer's question, and read the citations. Nothing leaves the page unless you copy it.</p>
+        <h2 id="cta-title">See a sourced reply to your own question.</h2>
+        <p>Upload the documents, ask the officer's question, and read the citations. Nothing is filed, and the draft is not sent anywhere.</p>
         <div class="hero-actions">
           <a class="btn sand" href="#tools" data-tab="query"><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-mail"/></svg>Draft a reply</a>
           <a class="btn dark" href="#tools" data-tab="charges"><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-invoice"/></svg>Check an invoice</a>
@@ -736,7 +793,7 @@ td { padding: 12px 14px; border-top: 2px solid var(--line); vertical-align: top;
         <span class="tile"><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-ship"/></svg></span>
         <span>Customs Copilot</span>
       </a>
-      <p>Drafts and checks for licensed customs professionals. A licensed professional remains responsible for anything filed. Sample data is synthetic.</p>
+      <p>Drafts and checks for licensed customs professionals. A licensed professional remains responsible for anything filed. The sample records are synthetic; uploads are not stored.</p>
       <span class="status-chip" role="status"><i class="dot"></i><span data-status>Checking service</span></span>
     </div>
     <div class="foot-col">
@@ -870,6 +927,115 @@ td { padding: 12px 14px; border-top: 2px solid var(--line); vertical-align: top;
     });
   }
 
+  /* File intake, shared by both tools: a .txt/.csv or a PDF becomes text. */
+
+  var MAX_TEXT = 20000;
+  var pdfLib = null;
+
+  function fileIsPdf(file) {
+    return /\.pdf$/.test((file.name || "").toLowerCase()) || file.type === "application/pdf";
+  }
+
+  function fileIsText(file) {
+    return /\.(txt|csv|md|log)$/.test((file.name || "").toLowerCase()) || /^text\//.test(file.type || "");
+  }
+
+  /* pdf.js is fetched only when a PDF is chosen, so the page works without it. */
+  function loadPdfLib() {
+    if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+    if (pdfLib) return pdfLib;
+    pdfLib = new Promise(function (resolve, reject) {
+      var base = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/";
+      var tag = document.createElement("script");
+      tag.src = base + "pdf.min.js";
+      tag.onload = function () {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = base + "pdf.worker.min.js";
+        resolve(window.pdfjsLib);
+      };
+      tag.onerror = function () {
+        pdfLib = null;
+        reject(new Error("The PDF reader could not be loaded. Check the connection, or paste the text instead."));
+      };
+      document.head.appendChild(tag);
+    });
+    return pdfLib;
+  }
+
+  function pdfLines(page) {
+    return page.getTextContent().then(function (content) {
+      var rows = {};
+      content.items.forEach(function (item) {
+        if (!item.str || !item.str.trim()) return;
+        var key = Math.round(item.transform[5] / 3);
+        (rows[key] = rows[key] || []).push({ x: item.transform[4], s: item.str });
+      });
+      return Object.keys(rows).map(Number).sort(function (a, b) { return b - a; }).map(function (key) {
+        var line = "";
+        rows[key].sort(function (a, b) { return a.x - b.x; }).forEach(function (item) {
+          if (line && !/\s$/.test(line) && !/^\s/.test(item.s)) line += " ";
+          line += item.s;
+        });
+        return line.replace(/\s+/g, " ").trim();
+      }).filter(Boolean).join("\n");
+    });
+  }
+
+  function pdfToText(file) {
+    return loadPdfLib().then(function (lib) {
+      return file.arrayBuffer().then(function (buf) { return lib.getDocument({ data: buf }).promise; });
+    }).then(function (pdf) {
+      var pages = [];
+      for (var n = 1; n <= pdf.numPages; n++) pages.push(pdf.getPage(n).then(pdfLines));
+      return Promise.all(pages);
+    }).then(function (parts) { return parts.filter(Boolean).join("\n"); });
+  }
+
+  function readFileText(file) {
+    var pdf = fileIsPdf(file), text = fileIsText(file);
+    if (!pdf && !text) {
+      return Promise.reject(new Error("Only .txt, .csv or .pdf files can be read here. Paste the text instead."));
+    }
+    return (pdf ? pdfToText(file) : file.text()).then(function (value) {
+      value = (value || "").replace(/\r\n?/g, "\n").trim();
+      if (!value) {
+        throw new Error(pdf
+          ? "That PDF has no text layer, so nothing could be read. Paste the text instead."
+          : "That file is empty.");
+      }
+      if (value.length > MAX_TEXT) {
+        throw new Error("The file is " + value.length.toLocaleString() + " characters; the limit is " + MAX_TEXT.toLocaleString() + ".");
+      }
+      return value;
+    });
+  }
+
+  /* Wire a file input and a drop target to one callback. */
+  function bindUpload(input, drop, onText, onNote) {
+    function take(file) {
+      if (!file) return;
+      onNote("Reading " + (file.name || "the file") + "...", false);
+      readFileText(file).then(function (text) {
+        onText(text, file.name || "the file");
+      }).catch(function (err) {
+        onNote(err.message, true);
+      });
+    }
+    input.addEventListener("change", function () {
+      take(input.files && input.files[0]);
+      input.value = "";
+    });
+    ["dragenter", "dragover"].forEach(function (ev) {
+      drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add("over"); });
+    });
+    ["dragleave", "dragend", "drop"].forEach(function (ev) {
+      drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove("over"); });
+    });
+    drop.addEventListener("drop", function (e) {
+      var dt = e.dataTransfer;
+      take(dt && dt.files && dt.files[0]);
+    });
+  }
+
   /* Tabs */
 
   var tabs = [$("tab-query"), $("tab-charges")];
@@ -907,6 +1073,50 @@ td { padding: 12px 14px; border-top: 2px solid var(--line); vertical-align: top;
   /* Query reply */
 
   var qSelect = $("shipment"), sampleQ = $("sample-q"), question = $("question");
+
+  /* Uploaded documents. While any are loaded they are the draft's source and
+     the sample shipment picker is ignored. */
+
+  var DOC_SLOTS = ["invoice", "bill_of_lading", "packing_list", "certificate_of_origin"];
+  var uploaded = {};
+
+  function slotState(kind, msg, cls) {
+    $("doc-" + kind + "-state").textContent = msg;
+    $("doc-" + kind).classList.toggle("ready", cls === "ready");
+    $("doc-" + kind).classList.toggle("bad", cls === "bad");
+  }
+
+  function refreshTray() {
+    var count = Object.keys(uploaded).length;
+    qSelect.disabled = count > 0;
+    sampleQ.disabled = count > 0;
+    $("doc-summary").textContent = count
+      ? "Using your " + (count === 1 ? "uploaded document" : count + " uploaded documents") + ". The sample shipment below is ignored."
+      : "No documents loaded. Drafts use the sample shipment below.";
+  }
+
+  DOC_SLOTS.forEach(function (kind) {
+    var input = $("doc-" + kind + "-file"), clear = $("doc-" + kind + "-clear");
+    bindUpload(input, $("doc-" + kind), function (text, name) {
+      uploaded[kind] = text;
+      slotState(kind, name + " \u00b7 " + text.length.toLocaleString() + " characters", "ready");
+      clear.hidden = false;
+      clearDraft();
+      refreshTray();
+    }, function (msg) {
+      slotState(kind, msg, "bad");
+    });
+    clear.addEventListener("click", function () {
+      delete uploaded[kind];
+      input.value = "";
+      slotState(kind, "Drop a file or choose one", null);
+      clear.hidden = true;
+      clearDraft();
+      refreshTray();
+    });
+  });
+
+  refreshTray();
 
   function loadShipments() {
     api("/shipments").then(function (body) {
@@ -958,9 +1168,21 @@ td { padding: 12px 14px; border-top: 2px solid var(--line); vertical-align: top;
     setStatus(msg || "", false, $("approve-status"));
   }
 
+  function readSummary(read) {
+    if (!read) return "";
+    var kinds = Object.keys(read);
+    if (!kinds.length) return "";
+    return "Read: " + kinds.map(function (k) {
+      return k.replace(/_/g, " ") + " " + read[k] + " field" + (read[k] === 1 ? "" : "s");
+    }).join(", ");
+  }
+
   function renderDraft(d) {
     $("draft-out").hidden = false;
-    $("draft-meta").textContent = "Mode: " + (d.mode || "offline") + "    Intent: " + (d.intent || "general");
+    var source = d.source === "upload" ? "uploaded documents" : "sample " + (d.shipment_id || "");
+    var read = readSummary(d.read);
+    $("draft-meta").textContent = "Source: " + source + "    Mode: " + (d.mode || "offline") +
+      "    Intent: " + (d.intent || "general") + (read ? "\n" + read : "");
     $("draft-text").value = d.draft || "";
 
     var sentences = d.sentences || [];
@@ -1013,15 +1235,19 @@ td { padding: 12px 14px; border-top: 2px solid var(--line); vertical-align: top;
   $("draft-btn").addEventListener("click", function () {
     var q = question.value.trim();
     if (!q) { setStatus("Enter a question first.", true, $("query-status")); return; }
+    var kinds = Object.keys(uploaded);
+    var payload = { question: q, use_llm: llmAvailable && $("use-llm").checked };
+    if (kinds.length) {
+      payload.documents = {};
+      kinds.forEach(function (k) { payload.documents[k] = uploaded[k]; });
+    } else {
+      payload.shipment_id = qSelect.value;
+    }
     var btn = $("draft-btn");
     var seq = draftSeq;
     btn.disabled = true;
     setStatus("Drafting.", false, $("query-status"), true);
-    postJson("/draft", {
-      shipment_id: qSelect.value,
-      question: q,
-      use_llm: llmAvailable && $("use-llm").checked
-    }).then(function (d) {
+    postJson("/draft", payload).then(function (d) {
       if (seq !== draftSeq) return;
       setStatus("", false, $("query-status"));
       renderDraft(d);
@@ -1070,116 +1296,22 @@ td { padding: 12px 14px; border-top: 2px solid var(--line); vertical-align: top;
     }).then(function () { btn.disabled = false; });
   });
 
-  /* Charge check: read an uploaded invoice file into the textarea */
+  /* Charge check: an uploaded invoice file lands in the same textarea */
 
-  var INVOICE_MAX = 20000;
-  var invoiceDrop = $("invoice-drop"), invoiceFile = $("invoice-file"), invoiceName = $("invoice-file-name");
-  var pdfLib = null;
+  var invoiceNote = $("invoice-file-name");
 
-  function invoiceNote(msg, isErr) {
-    invoiceName.hidden = !msg;
-    invoiceName.textContent = msg || "";
-    invoiceName.classList.toggle("err", !!isErr);
+  function showInvoiceNote(msg, isErr) {
+    invoiceNote.hidden = !msg;
+    invoiceNote.textContent = msg || "";
+    invoiceNote.classList.toggle("err", !!isErr);
   }
 
-  /* pdf.js is fetched only when a PDF is chosen, so the page keeps working without it. */
-  function loadPdfLib() {
-    if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
-    if (pdfLib) return pdfLib;
-    pdfLib = new Promise(function (resolve, reject) {
-      var base = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/";
-      var tag = document.createElement("script");
-      tag.src = base + "pdf.min.js";
-      tag.onload = function () {
-        window.pdfjsLib.GlobalWorkerOptions.workerSrc = base + "pdf.worker.min.js";
-        resolve(window.pdfjsLib);
-      };
-      tag.onerror = function () {
-        pdfLib = null;
-        reject(new Error("The PDF reader could not be loaded. Check the connection, or paste the text instead."));
-      };
-      document.head.appendChild(tag);
-    });
-    return pdfLib;
-  }
-
-  function pdfLines(page) {
-    return page.getTextContent().then(function (content) {
-      var rows = {};
-      content.items.forEach(function (item) {
-        if (!item.str || !item.str.trim()) return;
-        var key = Math.round(item.transform[5] / 3);
-        (rows[key] = rows[key] || []).push({ x: item.transform[4], s: item.str });
-      });
-      return Object.keys(rows).map(Number).sort(function (a, b) { return b - a; }).map(function (key) {
-        var line = "";
-        rows[key].sort(function (a, b) { return a.x - b.x; }).forEach(function (item) {
-          if (line && !/\s$/.test(line) && !/^\s/.test(item.s)) line += " ";
-          line += item.s;
-        });
-        return line.replace(/\s+/g, " ").trim();
-      }).filter(Boolean).join("\n");
-    });
-  }
-
-  function pdfToText(file) {
-    return loadPdfLib().then(function (lib) {
-      return file.arrayBuffer().then(function (buf) { return lib.getDocument({ data: buf }).promise; });
-    }).then(function (pdf) {
-      var pages = [];
-      for (var n = 1; n <= pdf.numPages; n++) pages.push(pdf.getPage(n).then(pdfLines));
-      return Promise.all(pages);
-    }).then(function (parts) { return parts.filter(Boolean).join("\n"); });
-  }
-
-  function readInvoiceFile(file) {
-    if (!file) return;
-    var name = file.name || "invoice";
-    var lower = name.toLowerCase(), kind = file.type || "";
-    var isPdf = /\.pdf$/.test(lower) || kind === "application/pdf";
-    var isText = /\.(txt|csv|md|log)$/.test(lower) || /^text\//.test(kind);
-    if (!isPdf && !isText) {
-      invoiceNote("Only .txt, .csv or .pdf files can be read here. Paste the text instead.", true);
-      return;
-    }
-    invoiceNote("Reading " + name + "...", false);
-    var job = isPdf ? pdfToText(file) : file.text();
-    job.then(function (text) {
-      text = (text || "").replace(/\r\n?/g, "\n").trim();
-      if (!text) throw new Error(isPdf ? "That PDF has no text layer, so nothing could be read. Paste the text instead." : "That file is empty.");
-      if (text.length > INVOICE_MAX) throw new Error("The invoice is " + text.length.toLocaleString() + " characters; the limit is " + INVOICE_MAX.toLocaleString() + ".");
-      $("invoice-text").value = text;
-      $("charge-out").hidden = true;
-      invoiceNote("Loaded " + name + " (" + text.length.toLocaleString() + " characters).", false);
-      setStatus("Review the text below, then check the invoice.", false, $("charge-status"));
-    }).catch(function (err) {
-      invoiceNote(err.message, true);
-    });
-  }
-
-  invoiceFile.addEventListener("change", function () {
-    readInvoiceFile(invoiceFile.files && invoiceFile.files[0]);
-    invoiceFile.value = "";
-  });
-
-  ["dragenter", "dragover"].forEach(function (ev) {
-    invoiceDrop.addEventListener(ev, function (e) {
-      e.preventDefault();
-      invoiceDrop.classList.add("over");
-    });
-  });
-
-  ["dragleave", "dragend", "drop"].forEach(function (ev) {
-    invoiceDrop.addEventListener(ev, function (e) {
-      e.preventDefault();
-      invoiceDrop.classList.remove("over");
-    });
-  });
-
-  invoiceDrop.addEventListener("drop", function (e) {
-    var dt = e.dataTransfer;
-    readInvoiceFile(dt && dt.files && dt.files[0]);
-  });
+  bindUpload($("invoice-file"), $("invoice-drop"), function (text, name) {
+    $("invoice-text").value = text;
+    $("charge-out").hidden = true;
+    showInvoiceNote("Loaded " + name + " (" + text.length.toLocaleString() + " characters).", false);
+    setStatus("Review the text below, then check the invoice.", false, $("charge-status"));
+  }, showInvoiceNote);
 
   $("check-btn").addEventListener("click", function () {
     var t = $("invoice-text").value.trim();

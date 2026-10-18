@@ -1,6 +1,6 @@
 # Customs Copilot
 
-Two tools on one stateless service: a cited query-reply drafter for customs officer queries, and a charge checker for port and CFS invoices. Synthetic data only. Drafts and checks; a licensed professional remains responsible for anything filed.
+Two tools on one stateless service: a cited query-reply drafter for customs officer queries, and a charge checker for port and CFS invoices. Both take your own documents — uploaded or pasted — and fall back on the bundled samples. Nothing is stored. Drafts and checks; a licensed professional remains responsible for anything filed.
 
 Design: `Customs Copilot - System Design and Architecture` (PDF, kept outside the repo).
 
@@ -9,6 +9,7 @@ Design: `Customs Copilot - System Design and Architecture` (PDF, kept outside th
 ```
 api/index.py        ASGI routes (Starlette), input limits, error mapping
 core/copilot.py     intents, chunking, verify gate, drafting, cross-checks
+core/intake.py      reads uploaded document text into the lines the copilot cites
 core/charges.py     invoice reader, tariff selection, Decimal checks, explanation
 core/retrieval.py   dependency-free BM25
 core/llm.py         optional Gemini client (urllib, 8 s timeout, never raises)
@@ -50,7 +51,7 @@ Set `GEMINI_API_KEY` (and optionally `GEMINI_MODEL`). Without a key the service 
 | GET | `/api/health` | `llm_available` shows whether a key is configured |
 | GET | `/api/shipments` | ids and document types |
 | GET | `/api/questions?shipment_id=` | sample officer questions (404 if unknown shipment) |
-| POST | `/api/draft` | `{shipment_id, question, use_llm}`; 400 missing or over 2000 chars; 404 unknown shipment |
+| POST | `/api/draft` | `{question, use_llm}` plus either `shipment_id` for a bundled sample or `documents: {invoice, bill_of_lading, packing_list, certificate_of_origin}` with your own text; 400 missing, question over 2000 chars or a document over 20000 chars; 404 unknown shipment |
 | GET | `/api/cfs/samples` | sample invoices with the answer key removed |
 | POST | `/api/cfs/check` | `{text, tariff_id?}`; 400 missing or over 20000 chars; 422 unreadable or no tariff card |
 
@@ -62,6 +63,7 @@ Import the repository in Vercel. `vercel.json` rewrites `/api/*` to the single f
 
 ## Known gaps
 
-- The invoice reader is a regular expression for the sample layout. Gemini-assisted reading and explanation polish from the design are not built yet.
-- Real tariff cards, real documents and real PDF intake are out of scope for v1.
-- The first live Vercel deployment has not been tested from here.
+- The charge reader is a regular expression for the invoice layout in `data/cfs_invoices.json`. Another layout is refused with a message rather than guessed at.
+- The drafts reader (`core/intake.py`) is label-based: it reads the fields it has labels for (`Invoice Value`, `HS Code`, `Vessel`, ...) out of your text, and reports a document it read nothing from. A layout whose labels it does not know needs a new label in its field table.
+- Uploads are read as text: a `.txt`/`.csv` file, or a PDF that carries a text layer. A scanned page has no text to read, and OCR is not built. The PDF is parsed in the browser with pdf.js (loaded from a CDN only when a PDF is chosen).
+- Real tariff cards are out of scope for v1; the bundled card is synthetic.

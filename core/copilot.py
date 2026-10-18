@@ -6,6 +6,16 @@ from .retrieval import BM25
 
 STATUS = "DRAFT - not sent. Needs agent approval."
 NUMBER = re.compile(r"\d+(?:[.,]\d+)*")
+WORD = re.compile(r"[a-z]{4,}")
+
+# Words that appear in nearly every question or document line, so sharing one
+# says nothing about which line answers the question.
+COMMON = frozenset("""
+    what which when where whose whom this that these those there their with from
+    have has been being does did will would shall should could can your yours
+    shipment shipments consignment please kindly provide confirm give tell
+    shown listed document documents
+""".split())
 
 DOC_LABEL = {
     "invoice": ("Commercial Invoice", "INVOICE"),
@@ -99,11 +109,20 @@ def required_gaps(evidence, shipment):
     return missing
 
 
-def offline_sentences(intent, evidence, chunks, question, bm25):
+def shares_a_word(question, line):
+    asked = {w for w in WORD.findall(question.lower()) if w not in COMMON}
+    return bool(asked and asked & set(WORD.findall(line.lower())))
+
+
+def offline_sentences(intent, evidence, chunks, question):
     sentences = []
     if intent == "general":
-        for i in bm25.top(question, k=3):
-            c = chunks[i]
+        # A general question is answered only from lines that share a word with
+        # it, so an unrelated question drafts nothing instead of the best of a
+        # bad lot.
+        pool = [c for c in chunks if shares_a_word(question, c.text)]
+        for i in BM25([c.text for c in pool]).top(question, k=3):
+            c = pool[i]
             label = DOC_LABEL[c.doc][0]
             sentences.append({"text": f"The {label} records: {c.value}.", "cite": c.id, "quote": c.text})
         return sentences
@@ -142,8 +161,7 @@ def draft(shipment, question, use_llm=False, llm_call=None):
                 mode = "llm"
 
     if mode == "offline":
-        bm25 = BM25([c.text for c in chunks])
-        sentences, rej = verify(offline_sentences(intent, evidence, chunks, question, bm25), by_id)
+        sentences, rej = verify(offline_sentences(intent, evidence, chunks, question), by_id)
         rejected += rej
 
     missing = required_gaps(evidence, shipment)
@@ -181,14 +199,23 @@ def _value(shipment, doc, key):
     return None
 
 
+def _same(a, b):
+    """Compare two field values that may carry units or thousands separators."""
+    na = [n.replace(",", "") for n in NUMBER.findall(a)]
+    nb = [n.replace(",", "") for n in NUMBER.findall(b)]
+    if na and nb:
+        return na[0] == nb[0]
+    return a == b
+
+
 def cross_checks(shipment):
     notes = []
     inv_hs = _value(shipment, "invoice", "HS Code")
     cert_hs = _value(shipment, "certificate_of_origin", "HS Code")
-    if inv_hs and cert_hs and inv_hs != cert_hs:
+    if inv_hs and cert_hs and not _same(inv_hs, cert_hs):
         notes.append(f"HS code differs between the invoice ({inv_hs}) and the certificate of origin ({cert_hs}). Confirm before replying.")
     pk = _value(shipment, "packing_list", "Total Packages")
     bl = _value(shipment, "bill_of_lading", "Packages")
-    if pk and bl and pk != bl:
+    if pk and bl and not _same(pk, bl):
         notes.append(f"Package count differs between the packing list ({pk}) and the bill of lading ({bl}). Confirm before replying.")
     return notes

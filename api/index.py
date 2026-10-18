@@ -12,13 +12,14 @@ from starlette.applications import Starlette
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 
-from core import llm
+from core import intake, llm
 from core.charges import ReadError, TariffError, check_invoice
 from core.copilot import draft
 
-MAX_BODY = 64 * 1024
+MAX_BODY = 256 * 1024
 MAX_QUESTION = 2000
 MAX_INVOICE = 20000
+MAX_DOC = 20000
 DATA = ROOT / "data"
 
 
@@ -80,20 +81,45 @@ async def draft_reply(request):
     data, err = await _json_body(request)
     if err:
         return err
-    shipment_id = str(data.get("shipment_id", "")).strip()
     question = str(data.get("question", "")).strip()
-    if not shipment_id:
-        return _error("shipment_id is required.", 400)
     if not question:
         return _error("question is required.", 400)
     if len(question) > MAX_QUESTION:
         return _error(f"question is too long (max {MAX_QUESTION} characters).", 400)
-    shipment = _shipment(shipment_id)
-    if shipment is None:
-        return _error(f"Unknown shipment '{shipment_id}'.", 404)
+
+    notes = []
+    documents = data.get("documents")
+    if documents is not None:
+        # Real mode: the caller sends the documents themselves.
+        if not isinstance(documents, dict):
+            return _error("documents must be an object mapping document type to its text.", 400)
+        texts = {}
+        for kind, value in documents.items():
+            if kind not in intake.DOC_KINDS:
+                return _error(f"Unknown document type '{kind}'.", 400)
+            text = str(value or "").strip()
+            if not text:
+                continue
+            if len(text) > MAX_DOC:
+                return _error(f"The '{kind}' document is too long (max {MAX_DOC} characters).", 400)
+            texts[kind] = text
+        if not texts:
+            return _error("documents must include at least one document with text.", 400)
+        shipment, notes, read = intake.build(texts)
+        shipment_id, source = None, "upload"
+    else:
+        shipment_id = str(data.get("shipment_id", "")).strip()
+        if not shipment_id:
+            return _error("shipment_id is required.", 400)
+        shipment = _shipment(shipment_id)
+        if shipment is None:
+            return _error(f"Unknown shipment '{shipment_id}'.", 404)
+        source, read = "sample", {}
+
     use_llm = data.get("use_llm") is True and llm.configured()
     result = draft(shipment, question, use_llm=use_llm, llm_call=llm.complete_json if use_llm else None)
-    return JSONResponse({"shipment_id": shipment_id, **result})
+    result["notes"] = notes + result["notes"]
+    return JSONResponse({"shipment_id": shipment_id, "source": source, "read": read, **result})
 
 
 async def cfs_samples(request):
