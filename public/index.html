@@ -123,6 +123,18 @@ select { appearance: none; padding-right: 40px; background-image: url("data:imag
 .check { display: flex; align-items: center; gap: 10px; font-size: 15px; color: var(--ink-2); margin-bottom: 4px; }
 .check[hidden] { display: none; }
 .check input { width: 20px; height: 20px; accent-color: var(--clay); }
+/* Invoice file upload */
+.upload { position: relative; display: grid; gap: 6px; justify-items: center; text-align: center; padding: 22px 18px; border-radius: 16px; background: var(--bone); box-shadow: inset 0 0 0 2px var(--line); cursor: pointer; transition: box-shadow 0.2s var(--ease), background 0.2s var(--ease); }
+.upload:hover, .upload:focus-within { box-shadow: inset 0 0 0 2px var(--clay); }
+.upload.over { background: var(--sand); box-shadow: inset 0 0 0 3px var(--clay); }
+.upload input[type="file"] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.upload .icon { font-size: 30px; color: var(--clay-ink); }
+.upload .upload-title { font-weight: 700; color: var(--ink-2); }
+.upload .upload-browse { color: var(--clay-ink); text-decoration: underline; text-underline-offset: 3px; }
+.upload .upload-hint { font-family: var(--mono); font-size: 12px; letter-spacing: 0.02em; color: var(--muted); }
+.upload-name { margin-top: 10px; font-family: var(--mono); font-size: 13px; color: var(--ink-2); overflow-wrap: anywhere; }
+.upload-name[hidden] { display: none; }
+.upload-name.err { color: var(--bad); }
 .row { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
 .status { min-height: 26px; margin-top: 14px; font-family: var(--mono); font-size: 14px; color: var(--ink-2); }
 .status.err { color: var(--bad); }
@@ -477,7 +489,7 @@ td { padding: 12px 14px; border-top: 2px solid var(--line); vertical-align: top;
           </figure>
           <div>
             <h3>Every billed line measured against the card.</h3>
-            <p>Paste the invoice text or load a sample. Handling, documentation and storage lines are compared with the rate for the container size.</p>
+            <p>Upload an invoice file, paste its text, or load a sample. Handling, documentation and storage lines are compared with the rate for the container size.</p>
             <dl class="specs">
               <div><span class="tile copper sm"><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-calculator"/></svg></span><div><dt>Rates from the card</dt><dd>The container size selects the rate and the slab.</dd></div></div>
               <div><span class="tile copper sm"><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-clock"/></svg></span><div><dt>Days recounted</dt><dd>Storage runs from gate in to gate out, less the free days on the card.</dd></div></div>
@@ -614,7 +626,7 @@ td { padding: 12px 14px; border-top: 2px solid var(--line); vertical-align: top;
       <section class="panel" id="panel-charges" role="tabpanel" aria-labelledby="tab-charges" hidden>
         <div class="panel-intro">
           <h3>Check a port or CFS invoice against its tariff card.</h3>
-          <p>Paste the invoice text, or load a sample. Each charge is compared with the card, and each flag names the tariff line it was measured against.</p>
+          <p>Upload an invoice file, paste its text, or load a sample. Each charge is compared with the card, and each flag names the tariff line it was measured against.</p>
         </div>
 
         <div class="grid">
@@ -628,7 +640,18 @@ td { padding: 12px 14px; border-top: 2px solid var(--line); vertical-align: top;
         </div>
 
         <div class="field">
-          <label for="invoice-text">Invoice text</label>
+          <span class="lab">Invoice file</span>
+          <label class="upload" id="invoice-drop">
+            <input type="file" id="invoice-file" accept=".txt,.csv,.md,.log,text/plain,.pdf,application/pdf" aria-label="Upload an invoice file">
+            <svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-up"/></svg>
+            <span class="upload-title">Drop an invoice here, or <span class="upload-browse">choose a file</span></span>
+            <span class="upload-hint">.txt, .csv, or a PDF with a text layer &middot; up to 20,000 characters</span>
+          </label>
+          <p class="upload-name" id="invoice-file-name" hidden></p>
+        </div>
+
+        <div class="field">
+          <label for="invoice-text">Or paste the invoice text</label>
           <textarea id="invoice-text" maxlength="20000" style="min-height: 200px;" placeholder="TERMINAL: ...&#10;INVOICE NO: ..."></textarea>
         </div>
 
@@ -1047,9 +1070,120 @@ td { padding: 12px 14px; border-top: 2px solid var(--line); vertical-align: top;
     }).then(function () { btn.disabled = false; });
   });
 
+  /* Charge check: read an uploaded invoice file into the textarea */
+
+  var INVOICE_MAX = 20000;
+  var invoiceDrop = $("invoice-drop"), invoiceFile = $("invoice-file"), invoiceName = $("invoice-file-name");
+  var pdfLib = null;
+
+  function invoiceNote(msg, isErr) {
+    invoiceName.hidden = !msg;
+    invoiceName.textContent = msg || "";
+    invoiceName.classList.toggle("err", !!isErr);
+  }
+
+  /* pdf.js is fetched only when a PDF is chosen, so the page keeps working without it. */
+  function loadPdfLib() {
+    if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+    if (pdfLib) return pdfLib;
+    pdfLib = new Promise(function (resolve, reject) {
+      var base = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/";
+      var tag = document.createElement("script");
+      tag.src = base + "pdf.min.js";
+      tag.onload = function () {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = base + "pdf.worker.min.js";
+        resolve(window.pdfjsLib);
+      };
+      tag.onerror = function () {
+        pdfLib = null;
+        reject(new Error("The PDF reader could not be loaded. Check the connection, or paste the text instead."));
+      };
+      document.head.appendChild(tag);
+    });
+    return pdfLib;
+  }
+
+  function pdfLines(page) {
+    return page.getTextContent().then(function (content) {
+      var rows = {};
+      content.items.forEach(function (item) {
+        if (!item.str || !item.str.trim()) return;
+        var key = Math.round(item.transform[5] / 3);
+        (rows[key] = rows[key] || []).push({ x: item.transform[4], s: item.str });
+      });
+      return Object.keys(rows).map(Number).sort(function (a, b) { return b - a; }).map(function (key) {
+        var line = "";
+        rows[key].sort(function (a, b) { return a.x - b.x; }).forEach(function (item) {
+          if (line && !/\s$/.test(line) && !/^\s/.test(item.s)) line += " ";
+          line += item.s;
+        });
+        return line.replace(/\s+/g, " ").trim();
+      }).filter(Boolean).join("\n");
+    });
+  }
+
+  function pdfToText(file) {
+    return loadPdfLib().then(function (lib) {
+      return file.arrayBuffer().then(function (buf) { return lib.getDocument({ data: buf }).promise; });
+    }).then(function (pdf) {
+      var pages = [];
+      for (var n = 1; n <= pdf.numPages; n++) pages.push(pdf.getPage(n).then(pdfLines));
+      return Promise.all(pages);
+    }).then(function (parts) { return parts.filter(Boolean).join("\n"); });
+  }
+
+  function readInvoiceFile(file) {
+    if (!file) return;
+    var name = file.name || "invoice";
+    var lower = name.toLowerCase(), kind = file.type || "";
+    var isPdf = /\.pdf$/.test(lower) || kind === "application/pdf";
+    var isText = /\.(txt|csv|md|log)$/.test(lower) || /^text\//.test(kind);
+    if (!isPdf && !isText) {
+      invoiceNote("Only .txt, .csv or .pdf files can be read here. Paste the text instead.", true);
+      return;
+    }
+    invoiceNote("Reading " + name + "...", false);
+    var job = isPdf ? pdfToText(file) : file.text();
+    job.then(function (text) {
+      text = (text || "").replace(/\r\n?/g, "\n").trim();
+      if (!text) throw new Error(isPdf ? "That PDF has no text layer, so nothing could be read. Paste the text instead." : "That file is empty.");
+      if (text.length > INVOICE_MAX) throw new Error("The invoice is " + text.length.toLocaleString() + " characters; the limit is " + INVOICE_MAX.toLocaleString() + ".");
+      $("invoice-text").value = text;
+      $("charge-out").hidden = true;
+      invoiceNote("Loaded " + name + " (" + text.length.toLocaleString() + " characters).", false);
+      setStatus("Review the text below, then check the invoice.", false, $("charge-status"));
+    }).catch(function (err) {
+      invoiceNote(err.message, true);
+    });
+  }
+
+  invoiceFile.addEventListener("change", function () {
+    readInvoiceFile(invoiceFile.files && invoiceFile.files[0]);
+    invoiceFile.value = "";
+  });
+
+  ["dragenter", "dragover"].forEach(function (ev) {
+    invoiceDrop.addEventListener(ev, function (e) {
+      e.preventDefault();
+      invoiceDrop.classList.add("over");
+    });
+  });
+
+  ["dragleave", "dragend", "drop"].forEach(function (ev) {
+    invoiceDrop.addEventListener(ev, function (e) {
+      e.preventDefault();
+      invoiceDrop.classList.remove("over");
+    });
+  });
+
+  invoiceDrop.addEventListener("drop", function (e) {
+    var dt = e.dataTransfer;
+    readInvoiceFile(dt && dt.files && dt.files[0]);
+  });
+
   $("check-btn").addEventListener("click", function () {
     var t = $("invoice-text").value.trim();
-    if (!t) { setStatus("Paste an invoice first.", true, $("charge-status")); return; }
+    if (!t) { setStatus("Upload or paste an invoice first.", true, $("charge-status")); return; }
     var btn = $("check-btn");
     btn.disabled = true;
     setStatus("Checking.", false, $("charge-status"), true);
