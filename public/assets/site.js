@@ -41,6 +41,7 @@
   document.body.appendChild(bar);
 
   var header = document.querySelector(".site-header");
+  var toTop = document.getElementById("to-top");
   var photos = Array.prototype.slice.call(document.querySelectorAll(".ph img"));
   var rail = document.querySelector(".steps");
   var ticking = false;
@@ -53,6 +54,7 @@
     var max = document.documentElement.scrollHeight - vh;
     bar.style.transform = "scaleX(" + (max > 0 ? clamp(y / max, 0, 1) : 0).toFixed(4) + ")";
     if (header) header.classList.toggle("scrolled", y > 8);
+    if (toTop) toTop.hidden = y < 900;
     if (reduceMotion) return;
     photos.forEach(function (img) {
       var box = img.parentElement.getBoundingClientRect();
