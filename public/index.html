@@ -67,7 +67,7 @@
 /* ---------- Solutions ---------- */
 .solutions { background: var(--bone); }
 .sol-panel[hidden] { display: none; }
-.sol-panel { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: clamp(24px, 3.4vw, 48px); align-items: start; }
+.sol-panel { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: clamp(24px, 3.4vw, 48px); align-items: center; }
 .photo { margin: 0; padding: 10px 10px 12px; border-radius: var(--r-lg); background: var(--sand); box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.6), 0 8px 0 var(--sand-2); margin-bottom: 8px; }
 .ph { overflow: hidden; border-radius: var(--r-lg); aspect-ratio: 3 / 4; background: var(--sand-2); }
 .photo img { width: 100%; height: 100%; object-fit: cover; transform: translate3d(0, var(--py, 0px), 0) scale(1.14); will-change: transform; }
@@ -101,7 +101,7 @@
 .tab { display: inline-flex; align-items: center; gap: 10px; padding: 12px 20px; border: 0; border-radius: var(--r-md); background: var(--bone-2); font-weight: 700; font-size: var(--fs-md); cursor: pointer; box-shadow: inset 0 0 0 2px var(--line), 0 5px 0 var(--line); margin-bottom: 5px; color: var(--ink-2); }
 .tab .icon { font-size: 20px; }
 .tab[aria-selected="true"] { background: var(--clay); color: var(--on-clay); box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.28), inset 0 -5px 0 rgba(0, 0, 0, 0.16), 0 5px 0 var(--clay-deep); }
-.panel { background: var(--bone-2); border-radius: var(--r-lg); padding: clamp(20px, 3vw, 40px); box-shadow: inset 0 3px 0 #fff, 0 6px 0 rgba(0, 0, 0, 0.12); }
+.panel { background: var(--bone-2); border-radius: var(--r-lg); padding: clamp(24px, 3vw, 40px) clamp(24px, 3vw, 40px) clamp(40px, 4vw, 56px); box-shadow: inset 0 3px 0 #fff, 0 6px 0 rgba(0, 0, 0, 0.12); }
 .panel[hidden] { display: none; }
 .panel-intro { max-width: 70ch; margin-bottom: 30px; }
 .panel-intro h3 { font-size: var(--fs-h3); line-height: 1.08; letter-spacing: -0.02em; font-weight: 800; font-stretch: 90%; }
@@ -516,7 +516,7 @@ td { padding: 12px 14px; border-top: 2px solid var(--line); vertical-align: top;
               <div><span class="tile sm"><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-docvalid"/></svg></span><div><dt>Exact match</dt><dd>The quoted text must appear on the cited line. Numbers and codes are compared too.</dd></div></div>
               <div><span class="tile sm"><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-attach"/></svg></span><div><dt>Gaps are listed</dt><dd>Documents still needed appear beneath the draft with the reason.</dd></div></div>
             </dl>
-            <a class="btn" href="#tools" data-tab="query"><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-arrow"/></svg>Try a query reply</a>
+            <a class="btn" href="#tools" data-tab="query"><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-arrow"/></svg>Draft a reply</a>
           </div>
         </div>
 
@@ -533,7 +533,7 @@ td { padding: 12px 14px; border-top: 2px solid var(--line); vertical-align: top;
               <div><span class="tile copper sm"><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-clock"/></svg></span><div><dt>Days recounted</dt><dd>Storage runs from gate in to gate out, less the free days on the card.</dd></div></div>
               <div><span class="tile copper sm"><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-alert"/></svg></span><div><dt>Flags name their line</dt><dd>Each flag shows the tariff line it disagrees with and the overcharge before GST.</dd></div></div>
             </dl>
-            <a class="btn" href="#tools" data-tab="charges"><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-arrow"/></svg>Try a charge check</a>
+            <a class="btn" href="#tools" data-tab="charges"><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-arrow"/></svg>Check an invoice</a>
           </div>
         </div>
       </div>
@@ -653,8 +653,8 @@ td { padding: 12px 14px; border-top: 2px solid var(--line); vertical-align: top;
           <input type="checkbox" id="use-llm"> Use AI drafting. The draft is verified before it reaches you.
         </label>
 
-        <div class="row" style="margin-top:20px">
-          <button class="btn" id="draft-btn"><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-send"/></svg>Draft reply</button>
+        <div class="row" style="margin-top:36px">
+          <button class="btn" id="draft-btn"><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-send"/></svg>Draft a reply</button>
         </div>
         <div class="status" id="query-status" role="status"></div>
 
@@ -733,7 +733,7 @@ td { padding: 12px 14px; border-top: 2px solid var(--line); vertical-align: top;
         </div>
 
         <div class="row" style="margin-top:20px">
-          <button class="btn" id="check-btn"><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-search"/></svg>Check invoice</button>
+          <button class="btn" id="check-btn"><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-search"/></svg>Check an invoice</button>
         </div>
         <div class="status" id="charge-status" role="status"></div>
 
