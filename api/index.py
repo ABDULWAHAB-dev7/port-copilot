@@ -33,16 +33,29 @@ def _error(message, status):
 
 
 async def _json_body(request):
-    raw = await request.body()
-    if len(raw) > MAX_BODY:
-        return None, _error("Request body is too large.", 413)
+    # Read in chunks and stop at the cap, so an oversized body is never held in memory.
+    raw = bytearray()
+    async for chunk in request.stream():
+        raw += chunk
+        if len(raw) > MAX_BODY:
+            return None, _error("Request body is too large.", 413)
     try:
-        data = json.loads(raw or b"{}")
+        data = json.loads(bytes(raw) or b"{}")
     except ValueError:
         return None, _error("Request body must be valid JSON.", 400)
     if not isinstance(data, dict):
         return None, _error("Request body must be a JSON object.", 400)
     return data, None
+
+
+def _text(data, key):
+    """Return (text, error). A missing or null field is empty; any other non-text value is refused."""
+    value = data.get(key)
+    if value is None:
+        return "", None
+    if not isinstance(value, str):
+        return None, _error(f"{key} must be text.", 400)
+    return value.strip(), None
 
 
 def _shipment(shipment_id):
@@ -81,7 +94,9 @@ async def draft_reply(request):
     data, err = await _json_body(request)
     if err:
         return err
-    question = str(data.get("question", "")).strip()
+    question, err = _text(data, "question")
+    if err:
+        return err
     if not question:
         return _error("question is required.", 400)
     if len(question) > MAX_QUESTION:
@@ -97,7 +112,9 @@ async def draft_reply(request):
         for kind, value in documents.items():
             if kind not in intake.DOC_KINDS:
                 return _error(f"Unknown document type '{kind}'.", 400)
-            text = str(value or "").strip()
+            if value is not None and not isinstance(value, str):
+                return _error(f"The '{kind}' document must be text.", 400)
+            text = (value or "").strip()
             if not text:
                 continue
             if len(text) > MAX_DOC:
@@ -108,7 +125,9 @@ async def draft_reply(request):
         shipment, notes, read = intake.build(texts)
         shipment_id, source = None, "upload"
     else:
-        shipment_id = str(data.get("shipment_id", "")).strip()
+        shipment_id, err = _text(data, "shipment_id")
+        if err:
+            return err
         if not shipment_id:
             return _error("shipment_id is required.", 400)
         shipment = _shipment(shipment_id)
@@ -134,13 +153,17 @@ async def cfs_check(request):
     data, err = await _json_body(request)
     if err:
         return err
-    text = str(data.get("text", "")).strip()
+    text, err = _text(data, "text")
+    if err:
+        return err
     if not text:
         return _error("text is required.", 400)
     if len(text) > MAX_INVOICE:
         return _error(f"text is too long (max {MAX_INVOICE} characters).", 400)
-    tariff_id = data.get("tariff_id")
-    tariff_id = str(tariff_id).strip() if tariff_id else None
+    tariff_id, err = _text(data, "tariff_id")
+    if err:
+        return err
+    tariff_id = tariff_id or None
     try:
         return JSONResponse(check_invoice(text, _load("tariffs.json"), tariff_id))
     except ReadError as e:

@@ -86,6 +86,17 @@ def check_api():
     expect("DUPLICATE" in codes, "second storage line must be flagged")
     string_flag = c.post("/api/draft", json={"shipment_id": "SHP-1001", "question": "hs?", "use_llm": "true"}).json()
     expect(string_flag["mode"] == "offline", "use_llm must be a real boolean")
+    expect(c.post("/api/draft", json={"shipment_id": ["SHP-1001"], "question": "q"}).status_code == 400, "non-text shipment_id must be refused")
+    expect(c.post("/api/draft", json={"shipment_id": "SHP-1001", "question": ["q"]}).status_code == 400, "non-text question must be refused")
+    expect(c.post("/api/draft", json={"documents": {"invoice": 5}, "question": "q"}).status_code == 400, "non-text document must be refused")
+    expect(c.post("/api/cfs/check", json={"text": samples[0]["text"], "tariff_id": 99}).status_code == 400, "non-text tariff_id must be refused")
+
+    def oversized():
+        yield b'{"question":"'
+        for _ in range(30):
+            yield b"a" * 10000
+        yield b'"}'
+    expect(c.post("/api/draft", content=oversized(), headers={"content-type": "application/json"}).status_code == 413, "oversized streamed body must be refused")
 
 
 def check_regressions():

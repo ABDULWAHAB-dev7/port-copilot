@@ -1032,13 +1032,16 @@ td { padding: 12px 14px; border-top: 2px solid var(--line); vertical-align: top;
 
   /* Wire a file input and a drop target to one callback. */
   function bindUpload(input, drop, onText, onNote) {
+    /* Only the newest choice may land: a slow PDF read must not overwrite a later file. */
+    var latest = 0;
     function take(file) {
       if (!file) return;
+      var mine = ++latest;
       onNote("Reading " + (file.name || "the file") + "...", false);
       readFileText(file).then(function (text) {
-        onText(text, file.name || "the file");
+        if (mine === latest) onText(text, file.name || "the file");
       }).catch(function (err) {
-        onNote(err.message, true);
+        if (mine === latest) onNote(err.message, true);
       });
     }
     input.addEventListener("change", function () {
@@ -1153,8 +1156,12 @@ td { padding: 12px 14px; border-top: 2px solid var(--line); vertical-align: top;
     });
   }
 
+  var questionsSeq = 0;
+
   function loadQuestions(shipmentId) {
+    var mine = ++questionsSeq;
     api("/questions?shipment_id=" + encodeURIComponent(shipmentId)).then(function (body) {
+      if (mine !== questionsSeq) return;
       var items = listOf(body, "questions").map(function (q) {
         var t = typeof q === "string" ? q : (q.question || q.text || "");
         return { value: t, label: t.length > 90 ? t.slice(0, 87) + "..." : t };
@@ -1162,7 +1169,7 @@ td { padding: 12px 14px; border-top: 2px solid var(--line); vertical-align: top;
       fill(sampleQ, [{ value: "", label: "Choose a sample question" }].concat(items));
       question.value = items.length ? items[0].value : "";
     }).catch(function (err) {
-      setStatus(err.message, true, $("query-status"));
+      if (mine === questionsSeq) setStatus(err.message, true, $("query-status"));
     });
   }
 
@@ -1286,13 +1293,15 @@ td { padding: 12px 14px; border-top: 2px solid var(--line); vertical-align: top;
   $("copy-btn").addEventListener("click", function () {
     if (!approved) return;
     var text = $("draft-text").value;
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(text).then(function () {
-        setStatus("Copied. Nothing has been sent.", false, $("approve-status"));
-      }, function () {
-        setStatus("Copy failed. Select the text and copy it manually.", true, $("approve-status"));
-      });
+    if (!navigator.clipboard) {
+      setStatus("Copy is not available in this browser. Select the text and copy it manually.", true, $("approve-status"));
+      return;
     }
+    navigator.clipboard.writeText(text).then(function () {
+      setStatus("Copied. Nothing has been sent.", false, $("approve-status"));
+    }, function () {
+      setStatus("Copy failed. Select the text and copy it manually.", true, $("approve-status"));
+    });
   });
 
   $("reject-btn").addEventListener("click", function () {
