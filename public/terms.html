@@ -12,15 +12,15 @@
 <link rel="stylesheet" href="/assets/site.css">
 <style>
 .legal { padding: clamp(40px, 6vw, 88px) 0 clamp(64px, 8vw, 112px); }
-.legal .paper { max-width: 820px; margin: 0 auto; background: var(--bone-2); border-radius: 36px; padding: clamp(24px, 4.5vw, 56px); box-shadow: inset 0 4px 0 #fff, 0 10px 0 var(--sand-2); margin-bottom: 10px; }
-.back { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; text-decoration: none; color: var(--ink-2); padding: 8px 14px 8px 10px; border-radius: 12px; background: var(--sand); box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.6), 0 3px 0 var(--sand-2); margin-bottom: 8px; }
+.legal .paper { max-width: 820px; margin: 0 auto; background: var(--bone-2); border-radius: var(--r-xl); padding: clamp(24px, 4.5vw, 56px); box-shadow: inset 0 4px 0 #fff, 0 10px 0 var(--sand-2); margin-bottom: 10px; }
+.back { display: inline-flex; align-items: center; gap: 8px; font-size: var(--fs-sm); font-weight: 600; text-decoration: none; color: var(--ink-2); padding: 8px 14px 8px 10px; border-radius: var(--r-md); background: var(--sand); box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.6), 0 3px 0 var(--sand-2); margin-bottom: 8px; }
 .back .icon { transform: rotate(180deg); }
 .legal h1 { margin-top: 26px; font-size: clamp(38px, 5.4vw, 64px); line-height: 1; letter-spacing: -0.03em; font-weight: 800; font-stretch: 86%; }
-.draft { margin-top: 22px; padding: 14px 16px; border-radius: 16px; background: #F1D9A0; color: #5C3F05; font-size: 15px; box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.5); }
+.draft { margin-top: 22px; padding: 14px 16px; border-radius: var(--r-md); background: #F1D9A0; color: #5C3F05; font-size: var(--fs-md); box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.5); }
 .legal h2 { margin-top: 40px; font-size: 24px; letter-spacing: -0.015em; font-weight: 800; font-stretch: 92%; }
 .legal p, .legal li { color: var(--ink-2); margin-top: 12px; }
 .legal ul { padding-left: 22px; }
-.placeholder { font-family: var(--mono); font-size: 14px; background: var(--sand); padding: 1px 8px; border-radius: 7px; }
+.placeholder { font-family: var(--mono); font-size: var(--fs-sm); background: var(--sand); padding: 1px 8px; border-radius: var(--r-sm); }
 </style>
 </head>
 <body>
@@ -30,8 +30,8 @@
     <p><svg class="icon" aria-hidden="true"><use href="/assets/icons.svg#i-info"/></svg><span>Drafts and checks for licensed customs professionals. <span class="long">Nothing is filed from this site.</span></span></p>
     <nav aria-label="Utility">
       <span class="status-chip" role="status"><i class="dot"></i><span data-status>Checking service</span></span>
-      <a class="hide-sm" href="/terms.html">Terms</a>
-      <a class="hide-sm" href="/privacy.html">Privacy</a>
+      <a href="/terms.html">Terms</a>
+      <a href="/privacy.html">Privacy</a>
     </nav>
   </div>
 </div>
